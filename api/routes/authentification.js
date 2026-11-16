@@ -84,4 +84,30 @@ router.post("/connexion", (req, res) => {
 
 });
 
+router.post("/déconnexion", (req, res)=> {
+
+    const authorisation = authorisation.substring(7);
+
+    //Verification de la présence du jeton
+    if(!authorization || !authorization.startsWith("Bearer")) {
+        return res.status(401).json({
+            err:["Jeton manquant"]
+        });
+    }
+
+    const jeton = authorisation.substring(7);
+
+    // Vérification de l'existence du jeton
+    if (!jetons.has(jeton)) {
+        return res.status(401).json({
+            err: ["Jeton invalide"]
+        });
+    }
+
+    //supprime le jeton
+    jetons.delete(jeton);
+    res.status(204).end();
+});
+
+
 module.exports = router;
