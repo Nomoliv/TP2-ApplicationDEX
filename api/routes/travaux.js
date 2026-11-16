@@ -3,7 +3,7 @@ const router = express.Router();
 
 const connexion = require("../connexion");
 
-router.get('/', (req, res) => {
+router.get("/", (req, res) => {
 
     const cours = req.query.cours;
 
@@ -25,9 +25,10 @@ res.json(resultats);
     });
 
 });
+router.get("/:id", (req, res) => {
 
-const id  = req.params.id;
-const sql = "SELECT * FROM travaux WHERE id = ?";
+    const id  = req.params.id;
+    const sql = "SELECT * FROM travaux WHERE id = ?";
 
 connexion.query(sql, [id], (err, resultats) => {
     if(err) {
@@ -42,4 +43,35 @@ if (resultats.length === 0) {
 res.json(resultats[0]);
 
 });
+
+});
+
+router.get("/:id/disponibilites", (req, res) => {
+
+    const id = req.params.id;
+
+    const sql = `
+    SELECT
+         disponibilites.matricule,
+         disponibilites.nom,
+         disponibilites.creneau_id,
+         creneaux.debut,
+         creneaux.fin
+    FROM disponibilites
+    INNER JOIN creneaux
+        ON disponibilites.creneau_id = creneaux.id
+    WHERE disponibilites.travail_id = ?`;
+
+    connexion.query(sql, [id], (erreur, resultats) => {
+
+        if (erreur) {
+            return res.status(500).json({
+                err: ["Erreur lors de la récupération des disponibilités"]
+            })
+        }
+
+        res.json(resultats)
+    })
+})
+
 module.exports = router;
