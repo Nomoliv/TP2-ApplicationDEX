@@ -3,15 +3,23 @@ const router = express.Router();
 
 const connexion = require("../connexion");
 
-router.get('/', (req, res) => {
-    connexion.query('SELECT * FROM cours', (err, resultats) =>{
+router.get("/", (req, res) => {
+
+    console.log("Route GET /api/cours appelée");
+
+    connexion.query("SELECT * FROM cours", (err, resultats) => {
+
         if (err) {
-            return res.status(500).json(
-                {err: ["Erreur lors de la récupération des cours"]});
+            console.log("ERREUR MYSQL :", err.message);
 
-}
-res.json(resultats);
+            return res.status(500).json({
+                erreurs: ["Erreur lors de la récupération des cours"]
+            });
+        }
 
+        console.log("Cours récupérés :", resultats.length);
+
+        res.json(resultats);
     });
 
 });

@@ -6,15 +6,23 @@ const travaux = require("./routes/travaux");
 const disponibilites = require("./routes/disponibilites");
 const authentification = require("./routes/authentification");
 const admin = require("./routes/admin");
+const creneaux = require("./routes/creneaux");
 
 
 app.use(cors());
 app.use(express.json());
+
+app.use((req, res, next) => {
+    console.log("Requête reçue :", req.method, req.originalUrl);
+    next();
+});
+
 app.use("/api/cours", cours);
 app.use("/api/travaux", travaux);
 app.use("/api/travaux", disponibilites);
 app.use("/api", authentification);
 app.use("/api/admin", admin);
+app.use("/api", creneaux);
 
 app.get("/api", (req, res) => {
     res.json({message: "L'api marche!"});

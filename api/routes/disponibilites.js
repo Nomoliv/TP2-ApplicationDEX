@@ -3,107 +3,129 @@ const router = express.Router();
 
 const connexion = require("../connexion");
 
+// PUT : Ajouter ou modifier les disponibilités d'un étudiant
 router.put("/:id/disponibilites/:matricule", (req, res) => {
 
     const id = req.params.id;
     const matricule = req.params.matricule;
-    const nom = req.body.nom;
-    const creneaux = req.body.creneaux;
+    const corps = req.body || {};
 
-    //vérification des données reçues
+    const nom = corps.nom;
+    const creneaux = corps.creneaux;
 
-    if(
+    // Vérification des données reçues
+
+    if (
+        matricule.trim() === "" ||
+        matricule.length > 20 ||
         typeof nom !== "string" ||
         nom.trim() === "" ||
+        nom.trim().length > 100 ||
         !Array.isArray(creneaux) ||
-        creneaux.some(c => typeof c !== "string") ||
+        creneaux.some(c =>
+            typeof c !== "string" ||
+            c.trim() === "" ||
+            c.length > 30
+        ) ||
         new Set(creneaux).size !== creneaux.length
     ) {
         return res.status(400).json({
-            err: ["Données invalides"]
-        })
+            erreurs: ["Données invalides"]
+        });
     }
 
-    // Vérification de l'existence du travail
+    // Vérifier si le travail existe
 
     connexion.query(
         "SELECT id FROM travaux WHERE id = ?",
         [id],
         (err, travaux) => {
-            if(err) {
+
+            if (err) {
                 return res.status(500).json({
-                    err: ["Erreur serveur"]
+                    erreurs: ["Erreur serveur"]
                 });
             }
 
-            if(travaux.length === 0) {
+            if (travaux.length === 0) {
                 return res.status(404).json({
-                    err: ["Travail introuvable"]
+                    erreurs: ["Travail introuvable"]
                 });
             }
 
-            // vérification des créneaux appartiennent bien au travail
+            // Vérifier que les créneaux appartiennent au travail
 
-            const verifCreneau = (callback) =>{
-                if(creneaux.length === 0) {
+            const verifierCreneaux = (callback) => {
+
+                if (creneaux.length === 0) {
                     return callback(null, []);
                 }
 
                 connexion.query(
                     "SELECT id FROM creneaux WHERE travail_id = ? AND id IN (?)",
-                    [id, crenaux],
+                    [id, creneaux],
                     callback
                 );
             };
 
-            verifCreneau((err, resultats) => {
-                if(err) {
+            verifierCreneaux((err, resultats) => {
+
+                if (err) {
                     return res.status(500).json({
-                        err: ["Erreur lors de la vérification des créneaux"]
+                        erreurs: ["Erreur lors de la vérification des créneaux"]
                     });
                 }
 
-                if(resultats.length !== creneaux.length) {
+                if (resultats.length !== creneaux.length) {
                     return res.status(400).json({
-                        err: ["un ou plusieurs créneaux sont invalides"]
+                        erreurs: ["Un ou plusieurs créneaux sont invalides"]
                     });
                 }
+
+                // Commencer la transaction
 
                 connexion.beginTransaction((err) => {
 
                     if (err) {
                         return res.status(500).json({
-                            err: ["Erreur serveur"]
+                            erreurs: ["Erreur serveur"]
                         });
                     }
+
+                    // Supprimer les anciennes disponibilités
 
                     connexion.query(
                         "DELETE FROM disponibilites WHERE travail_id = ? AND matricule = ?",
                         [id, matricule],
                         (err) => {
-                            if(err) {
-                                return connexion.rollback(()=> {
+
+                            if (err) {
+                                return connexion.rollback(() => {
                                     res.status(500).json({
-                                        err: ["Erreur lors de la modification"]
+                                        erreurs: ["Erreur lors de la modification"]
                                     });
                                 });
                             }
 
-                            // préparation des nouvelles disponibilités
+                            // Préparer les nouvelles disponibilités
 
-                            const val = creneaux.map(creneau => [
+                            const valeurs = creneaux.map(creneau => [
                                 id,
                                 creneau,
                                 matricule,
                                 nom.trim()
                             ]);
 
-                            if(val.length === 0) {
+                            // Aucun créneau sélectionné
+
+                            if (valeurs.length === 0) {
+
                                 return connexion.commit((err) => {
-                                    if(err) {
+
+                                    if (err) {
                                         return connexion.rollback(() => {
                                             res.status(500).json({
-                                                err: ["Erreur serveur"]
+                                                erreurs: ["Erreur serveur"]
                                             });
                                         });
                                     }
@@ -112,23 +134,29 @@ router.put("/:id/disponibilites/:matricule", (req, res) => {
                                 });
                             }
 
+                            // Enregistrer les nouvelles disponibilités
+
                             connexion.query(
                                 "INSERT INTO disponibilites (travail_id, creneau_id, matricule, nom) VALUES ?",
-                                [val],
+                                [valeurs],
                                 (err) => {
-                                    if(err) {
+
+                                    if (err) {
                                         return connexion.rollback(() => {
                                             res.status(500).json({
-                                                err: ["Erreur lors de l'enregistrement"]
+                                                erreurs: ["Erreur lors de l'enregistrement"]
                                             });
                                         });
                                     }
 
+                                    // Confirmer la transaction
+
                                     connexion.commit((err) => {
-                                        if(err) {
+
+                                        if (err) {
                                             return connexion.rollback(() => {
                                                 res.status(500).json({
-                                                    err: ["Erreur serveurs"]
+                                                    erreurs: ["Erreur serveur"]
                                                 });
                                             });
                                         }
@@ -144,6 +172,5 @@ router.put("/:id/disponibilites/:matricule", (req, res) => {
         }
     );
 });
-
 
 module.exports = router;

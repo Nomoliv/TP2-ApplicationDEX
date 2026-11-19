@@ -1,111 +1,126 @@
 const express = require("express");
 const crypto = require("crypto");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 const router = express.Router();
+
 const connexion = require("../connexion");
 const jetons = require("../jetons");
 
-//Connecion d'un enseignant
+// POST : Connexion d'un enseignant
 
 router.post("/connexion", (req, res) => {
 
-    const identifiant = req.body.identifiant;
-    const mdp = req.body.map;
+    const identifiant = req.body?.identifiant;
+    const motDePasse = req.body?.motDePasse;
 
-    //verification des données reçues
-    if(
-        typeof identification !== "string" ||
+    // Vérification des données reçues
+
+    if (
+        typeof identifiant !== "string" ||
         identifiant.trim() === "" ||
-        typeof mdp !== "string" ||
-        mdp.length === 0
+        typeof motDePasse !== "string" ||
+        motDePasse.length === 0
     ) {
         return res.status(400).json({
-            err: ["Identifiant ou mot de passe requis"]
+            erreurs: ["Identifiant ou mot de passe requis"]
         });
     }
 
-    // Rechercher l'enseignat de la DB
+    // Rechercher l'enseignant dans la base de données
 
     connexion.query(
         "SELECT * FROM utilisateurs WHERE identifiant = ?",
-    [identifiant.trim()],
-    (err, resultats) => {
-        if(err) {
-            return res.status(500).json({
-                err: ["Erreur serveur"]
-            });
-        }
+        [identifiant.trim()],
+        (err, resultats) => {
 
-        if(resultats.length === 0) {
-            return res.status(401).json({
-                err: ["Identifiant ou mot de passe incorrect"]
-            });
-        }
+            if (err) {
+                return res.status(500).json({
+                    erreurs: ["Erreur serveur"]
+                });
+            }
 
-        const utilisateur = resultats[0];
+            if (resultats.length === 0) {
+                return res.status(401).json({
+                    erreurs: ["Identifiant ou mot de passe incorrect"]
+                });
+            }
 
-        //vérifier le mot de passe
-        bcrypt.compare(
-            mdp,
-            utilisateur.mot_de_passe_hache,
-            (erreur, value) => {
-                if(err) {
-                    return res.status(500).json({
-                        err: ["Erreur serveur"]
-                    });
-                }
-                
-                if(!valide) {
-                    return res.status(401).json({
-                        err: ["Identifiant ou mot de passe incorrect"]
-                    });
-                }
+            const utilisateur = resultats[0];
 
-                 // Générer un jeton aléatoire
-                    const jeton = crypto.randomBytes(32).toString('hex');
+            // Vérifier le mot de passe
+
+            bcrypt.compare(
+                motDePasse,
+                utilisateur.mot_de_passe_hache,
+                (err, valide) => {
+
+                    if (err) {
+                        return res.status(500).json({
+                            erreurs: ["Erreur serveur"]
+                        });
+                    }
+
+                    if (!valide) {
+                        return res.status(401).json({
+                            erreurs: ["Identifiant ou mot de passe incorrect"]
+                        });
+                    }
+
+                    // Générer un jeton aléatoire
+
+                    const jeton = crypto.randomBytes(32).toString("hex");
 
                     jetons.set(jeton, utilisateur.id);
 
-                // Envoyer les informations de connexion
-                res.json({
-                    jeton: jeton,
-                    utilisateur: {
-                        id: utilisateur.id,
-                        nom: utilisateur.nom,
-                        identifiant: utilisateur.identifiant
-                    }
-                });
-            }
-        )
-    }
+                    // Envoyer les informations de connexion
 
-)
+                    res.json({
+                        jeton: jeton,
+                        utilisateur: {
+                            id: utilisateur.id,
+                            nom: utilisateur.nom,
+                            identifiant: utilisateur.identifiant
+                        }
+                    });
 
+                }
+            );
+        }
+    );
 });
 
-router.post("/déconnexion", (req, res)=> {
 
-    const authorisation = authorisation.substring(7);
+// POST : Déconnexion d'un enseignant
 
-    //Verification de la présence du jeton
-    if(!authorization || !authorization.startsWith("Bearer")) {
+router.post("/deconnexion", (req, res) => {
+
+    const autorisation = req.headers.authorization;
+
+    // Vérifier la présence du jeton
+
+    if (!autorisation || !autorisation.startsWith("Bearer ")) {
         return res.status(401).json({
-            err:["Jeton manquant"]
+            erreurs: ["Jeton manquant"]
         });
     }
 
-    const jeton = authorisation.substring(7);
+    // Récupérer le jeton
 
-    // Vérification de l'existence du jeton
+    const jeton = autorisation.substring(7);
+
+    // Vérifier l'existence du jeton
+
     if (!jetons.has(jeton)) {
         return res.status(401).json({
-            err: ["Jeton invalide"]
+            erreurs: ["Jeton invalide"]
         });
     }
 
-    //supprime le jeton
+    // Supprimer le jeton
+
     jetons.delete(jeton);
+
     res.status(204).end();
 });
 

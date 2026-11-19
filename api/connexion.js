@@ -1,19 +1,24 @@
 const mysql = require("mysql2");
 
 const connexion = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'DexAppBD',
+
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "DexAppBD",
     port: 3306
+
 });
 
+// Connexion à MySQL
 connexion.connect((err) => {
+
     if (err) {
-        console.error("erreur de conneion MySql :", err);
+        console.error("Erreur de connexion MySQL :", err.message);
     } else {
-        console.log("connexion à MySql réussie !");
+        console.log("Connexion à MySQL réussie !");
     }
+
 });
 
 module.exports = connexion;

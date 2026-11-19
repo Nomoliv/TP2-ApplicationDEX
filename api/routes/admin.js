@@ -2,9 +2,9 @@ const express = require("express");
 const router = express.Router();
 
 const connexion = require("../connexion");
-const verifierJeton = require("../middleware/verifierJeton");
+const verifiJeton = require("../middleware/verifiJeton");
 
-router.get("/travaux", verifierJeton, (req, res) => {
+router.get("/travaux", verifiJeton, (req, res) => {
     const sql = `
     SELECT travaux.*
     FROM travaux
@@ -15,11 +15,11 @@ router.get("/travaux", verifierJeton, (req, res) => {
 
     connexion.query(
         sql,
-        [req, utilisateurId],
+        [req.utilisateurId],
         (err,  resultats) => {
             if(err){
                 return res.status(500).json({
-                    err: ["Erreur lors de la récupération des travaux"]
+                    erreurs: ["Erreur lors de la récupération des travaux"]
                 })
             }
 
